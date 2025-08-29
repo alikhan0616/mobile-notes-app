@@ -1,3 +1,4 @@
+import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -9,21 +10,33 @@ import {
 } from "react-native";
 import AddNoteModal from "../../components/AddNoteModal";
 import NoteList from "../../components/NoteList";
+import { useAuth } from "../../contexts/authContext";
 import noteService from "../../services/noteService";
 const NoteScreen = () => {
+  const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
+
   const [notes, setNotes] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [modalVisisble, setModalVisisble] = useState(false);
   const [newNote, setNewNote] = useState("");
 
   useEffect(() => {
-    fetchNotes();
-  }, []);
+    if (!authLoading && !user) {
+      router.replace("/auth");
+    }
+  }, [user, authLoading]);
+
+  useEffect(() => {
+    if (user) {
+      fetchNotes();
+    }
+  }, [user]);
 
   const fetchNotes = async () => {
     setLoading(true);
-    const response = await noteService.getNotes();
+    const response = await noteService.getNotes(user.$id);
 
     if (response.error) {
       setError(response.error);
@@ -39,7 +52,7 @@ const NoteScreen = () => {
   const addNote = async () => {
     if (newNote.trim() === "") return;
 
-    const response = await noteService.addNote(newNote);
+    const response = await noteService.addNote(user.$id, newNote);
 
     if (response.error) {
       Alert.alert("Error", response.error);
@@ -98,7 +111,11 @@ const NoteScreen = () => {
       ) : (
         <>
           {error && <Text style={styles.errorText}>{error}</Text>}
-          <NoteList notes={notes} onEdit={updateNote} onDelete={deleteNote} />
+          {notes.length === 0 ? (
+            <Text style={styles.noNotesText}>You have no notes</Text>
+          ) : (
+            <NoteList notes={notes} onEdit={updateNote} onDelete={deleteNote} />
+          )}
         </>
       )}
 
@@ -150,6 +167,13 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 15,
     fontSize: 16,
+  },
+  noNotesText: {
+    textAlign: "center",
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#555",
+    marginTop: 15,
   },
 });
 export default NoteScreen;
