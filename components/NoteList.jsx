@@ -1,12 +1,12 @@
 import { FlatList } from "react-native";
 import NoteItems from "./NoteItem";
 
-const NoteList = ({ notes }) => {
+const NoteList = ({ notes, onDelete }) => {
   return (
     <FlatList
       data={notes}
-      keyExtractor={(item) => item.id}
-      renderItem={({ item }) => <NoteItems note={item} />}
+      keyExtractor={(item) => item.$id}
+      renderItem={({ item }) => <NoteItems note={item} onDelete={onDelete} />}
     />
   );
 };

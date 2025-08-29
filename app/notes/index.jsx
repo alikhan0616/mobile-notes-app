@@ -1,31 +1,87 @@
-import { useState } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import AddNoteModal from "../../components/AddNoteModal";
 import NoteList from "../../components/NoteList";
+import noteService from "../../services/noteService";
 const NoteScreen = () => {
-  const [notes, setNotes] = useState([
-    { id: "1", text: "Note One" },
-    { id: "2", text: "Note Two" },
-    { id: "3", text: "Note Three" },
-  ]);
-
+  const [notes, setNotes] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [modalVisisble, setModalVisisble] = useState(false);
   const [newNote, setNewNote] = useState("");
 
+  useEffect(() => {
+    fetchNotes();
+  }, []);
+
+  const fetchNotes = async () => {
+    setLoading(true);
+    const response = await noteService.getNotes();
+
+    if (response.error) {
+      setError(response.error);
+      Alert.alert("Error", response.error);
+    } else {
+      setNotes(response.data);
+      setError(null);
+    }
+    setLoading(false);
+  };
+
   //   Add Note
-  const addNote = () => {
+  const addNote = async () => {
     if (newNote.trim() === "") return;
 
-    setNotes((prevNotes) => [
-      ...prevNotes,
-      { id: Date.now.toString(), text: newNote },
-    ]);
+    const response = await noteService.addNote(newNote);
+
+    if (response.error) {
+      Alert.alert("Error", response.error);
+    } else {
+      setNotes([...notes, response.data]);
+    }
 
     setNewNote(""), setModalVisisble(false);
   };
+
+  // Delete Note
+
+  const deleteNote = async (id) => {
+    Alert.alert("Delete Note", "Are you sure you want to delete this note?", [
+      {
+        text: "Cancel",
+        style: "cancel",
+      },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          const response = await noteService.deleteNote(id);
+          if (response.error) {
+            Alert.alert("Error", response.error);
+          } else {
+            setNotes(notes.filter((note) => note.$id !== id));
+          }
+        },
+      },
+    ]);
+  };
   return (
     <View style={styles.container}>
-      <NoteList notes={notes} />
+      {loading ? (
+        <ActivityIndicator size="large" color="#007bff" />
+      ) : (
+        <>
+          {error && <Text style={styles.errorText}>{error}</Text>}
+          <NoteList notes={notes} onDelete={deleteNote} />
+        </>
+      )}
 
       <TouchableOpacity style={styles.addButton}>
         <Text
@@ -69,6 +125,12 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 18,
     fontWeight: "bold",
+  },
+  errorText: {
+    color: "red",
+    textAlign: "center",
+    marginBottom: 15,
+    fontSize: 16,
   },
 });
 export default NoteScreen;
